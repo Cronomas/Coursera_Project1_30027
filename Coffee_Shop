@@ -1,0 +1,97 @@
+-- 1. Staff Table
+CREATE TABLE staff (
+    staff_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50),
+    last_name VARCHAR(50),
+    position VARCHAR(50),
+    start_date DATE,
+    location VARCHAR(10)
+);
+
+-- 2. Customer Table
+CREATE TABLE customer (
+    customer_id SERIAL PRIMARY KEY,
+    customer_name VARCHAR(100),
+    customer_email VARCHAR(100),
+    customer_since DATE,
+    customer_card_number VARCHAR(20),
+    birthdate DATE,
+    gender CHAR(1) CHECK (gender IN ('M', 'F'))
+);
+
+-- 3. Product_Type Table (Normalized)
+CREATE TABLE product_type (
+    product_type_id SERIAL PRIMARY KEY,
+    product_category VARCHAR(50) NOT NULL,
+    product_type_name VARCHAR(50) NOT NULL
+);
+
+-- 4. Product Table (References product_type)
+CREATE TABLE product (
+    product_id SERIAL PRIMARY KEY,
+    product_type_id INT NOT NULL,
+    product_name VARCHAR(100),
+    description TEXT,
+    price NUMERIC(10,2) CHECK (price >= 0),
+    
+    CONSTRAINT fk_product_type FOREIGN KEY (product_type_id) REFERENCES product_type(product_type_id)
+);
+
+-- 5. Sales Outlet Table
+CREATE TABLE sales_outlet (
+    sales_outlet_id SERIAL PRIMARY KEY,
+    sales_outlet_type VARCHAR(20),
+    address VARCHAR(100),
+    city VARCHAR(50),
+    telephone VARCHAR(20),
+    postal_code VARCHAR(10),
+    manager INT -- FK to staff_id optionally
+);
+
+-- 6. Sales Transaction Table (Header)
+CREATE TABLE sales_transaction (
+    transaction_id SERIAL PRIMARY KEY,
+    transaction_date DATE NOT NULL,
+    transaction_time TIME NOT NULL,
+    sales_outlet_id INT NOT NULL,
+    staff_id INT NOT NULL,
+    customer_id INT NOT NULL,
+
+    CONSTRAINT fk_sales_outlet FOREIGN KEY (sales_outlet_id) REFERENCES sales_outlet(sales_outlet_id),
+    CONSTRAINT fk_staff FOREIGN KEY (staff_id) REFERENCES staff(staff_id),
+    CONSTRAINT fk_customer FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
+);
+
+-- 7. Sales Detail Table (Line Items)
+CREATE TABLE sales_detail (
+    sales_detail_id SERIAL PRIMARY KEY,
+    transaction_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    price NUMERIC(10,2) NOT NULL CHECK (price >= 0),
+
+    CONSTRAINT fk_transaction FOREIGN KEY (transaction_id) REFERENCES sales_transaction(transaction_id),
+    CONSTRAINT fk_product FOREIGN KEY (product_id) REFERENCES product(product_id)
+);
+SELECT * FROM sales_detail;
+CREATE OR REPLACE VIEW staff_locations_view AS
+SELECT 
+    s.staff_id,
+    s.first_name || ' ' || s.last_name AS staff_name,
+    so.sales_outlet_id,
+    so.city AS location
+FROM staff s
+JOIN sales_outlet so ON s.location = so.city;
+SELECT * FROM staff_locations_view;
+CREATE MATERIALIZED VIEW product_info_m_view AS
+SELECT 
+    p.product_id,
+    p.product_name,
+    pt.product_type_name,
+    p.price
+FROM product p
+JOIN product_type pt ON p.product_type_id = pt.product_type_id;
+SELECT * FROM product_info_m_view;
+
+
+
